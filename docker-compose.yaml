@@ -2,7 +2,9 @@ version: '2'
 
 services:
   mailman-core:
-    image: maxking/mailman-core:0.4 # Use a specific version tag (tag latest is not published)
+    build:
+      context: mailman
+      dockerfile: Dockerfile
     container_name: mailman-core
     hostname: mailman-core
     restart: unless-stopped
@@ -20,8 +22,8 @@ services:
     - DATABASE_CLASS=mailman.database.postgresql.PostgreSQLDatabase
     - HYPERKITTY_API_KEY=someapikey
     ports:
-    - "127.0.0.1:8001:8001" # API
-    - "127.0.0.1:8024:8024" # LMTP - incoming emails
+    - "8001:8001" # API
+    - "8024:8024" # LMTP - incoming emails
     networks:
       mailman:
 
@@ -42,6 +44,7 @@ services:
     - DATABASE_TYPE=postgres
     - DATABASE_URL=postgresql://mailman:mailmanpass@database/mailmandb
     - HYPERKITTY_API_KEY=someapikey
+    - SECRET_KEY=somesecretkey
     ports:
     - "127.0.0.1:8000:8000" # HTTP
     - "127.0.0.1:8080:8080" # uwsgi
@@ -63,6 +66,24 @@ services:
       retries: 5
     networks:
       mailman:
+
+  mailhog:
+    # fake smtp server to receive all email traffic and test notifications.
+    init: true
+    container_name: mailhog
+    image: mailhog/mailhog
+    command: ["-smtp-bind-addr", "0.0.0.0:25"]
+    user: root
+    expose:
+      - 25
+      - 8025
+    ports:
+      - 8025:8025
+    healthcheck:
+      test: echo | telnet 127.0.0.1 25
+    #depends_on:
+      #- "database"
+      #- "dcc"
 
 networks:
   mailman:
