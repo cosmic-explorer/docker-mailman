@@ -24,8 +24,6 @@ services:
     ports:
     - "8001:8001" # API
     - "8024:8024" # LMTP - incoming emails
-    networks:
-      mailman:
 
   mailman-web:
     image: maxking/mailman-web:0.4 # Use a specific version tag (tag latest is not published)
@@ -45,11 +43,10 @@ services:
     - DATABASE_URL=postgresql://mailman:mailmanpass@database/mailmandb
     - HYPERKITTY_API_KEY=someapikey
     - SECRET_KEY=somesecretkey
-    ports:
-    - "127.0.0.1:8000:8000" # HTTP
-    - "127.0.0.1:8080:8080" # uwsgi
-    networks:
-      mailman:
+    - SERVE_FROM_DOMAIN=rc-ce-dev-mail.syr.edu
+    - MAILMAN_ADMIN_USER=lppekows
+    - MAILMAN_ADMIN_EMAIL=lppekows@syr.edu
+    - SECRET_KEY=mooseymcmoose
 
   database:
     environment:
@@ -64,8 +61,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      mailman:
+
+  proxy:
+    init: true
+    container_name: proxy
+    build:
+      context: proxy
+      dockerfile: docker/Dockerfile
+      args:
+        FQDN: ${FQDN}
+    environment:
+      FQDN: ${FQDN}
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - /opt/mailman/web:/opt/mailman-web-data
+    depends_on:
+      - "mailman-web"
+    ports:
+      - 8443:8443  # Set up to proxy mailman-web:8000
 
   mailhog:
     # fake smtp server to receive all email traffic and test notifications.
@@ -85,11 +98,7 @@ services:
       #- "database"
       #- "dcc"
 
-networks:
-  mailman:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-      -
-        subnet: 172.19.199.0/24
+volumes:
+  letsencrypt:
+
+
