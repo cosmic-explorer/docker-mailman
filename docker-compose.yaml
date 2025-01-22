@@ -76,7 +76,7 @@ services:
     depends_on:
       - "mailman-web"
     ports:
-      - 8443:8443  # Set up to proxy mailman-web:8000
+      - 443:443  # Set up to proxy mailman-web:8000
 
   mailhog:
     # fake smtp server to receive all email traffic and test notifications.

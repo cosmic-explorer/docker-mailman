@@ -1,0 +1,67 @@
+ServerName {{ FQDN }}
+
+<VirtualHost *:80>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/\.well\-known/acme\-challenge/
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]
+</VirtualHost>
+
+<VirtualHost *:443>
+    DocumentRoot /opt/mailman-web-data
+    RewriteEngine On
+
+    LogLevel warn
+
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/{{ FQDN }}/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/{{ FQDN }}/privkey.pem
+
+    ##OIDCProviderMetadataURL -- PROVIDER_METADATA_URL }}
+    ##OIDCClientID -- CLIENT_ID }}
+    ##OIDCClientSecret -- CLIENT_SECRET }}
+
+    # OIDCRedirectURI is a vanity URL that must point to a path protected by this module but must NOT point to any content
+    ##OIDCRedirectURI -- REDIRECT_URI }}
+    ##OIDCCryptoPassphrase -- CRYPTO_PASSPHRASE }}
+
+    # These will likely vary by provider
+    # https://github.com/netbox-community/netbox/discussions/6705
+    ##OIDCScope "openid email"
+    ##OIDCRemoteUserClaim email
+    #RequestHeader unset REMOTE_USER
+    #RequestHeader set REMOTE_USER expr=%{REMOTE_USER}
+
+    ProxyPass        "/postorius"  "http://mailman-web:8000/postorius"
+    ProxyPassReverse "/postorius"  "http://mailman-web:8000/postorius"
+
+    ProxyPass        "/hyperkitty" "http://mailman-web:8000/hyperkitty"
+    ProxyPassReverse "/hyperkitty" "http://mailman-web:8000/hyperkitty"
+
+    <Location />
+        # DirectoryIndex index.html index.cgi index.php /dcc
+        ## AuthType openid-connect
+        ## <RequireAny>
+        ##    Require user lppekows@gmail.com
+        ## </RequireAny>
+        Require all granted
+    </Location>
+
+    <LocationMatch "/static">
+        Require all granted
+    </LocationMatch>
+
+</VirtualHost>
+
+# intermediate configuration
+SSLProtocol             all -SSLv3 -TLSv1 -TLSv1.1
+SSLCipherSuite          ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384
+SSLHonorCipherOrder     off
+SSLSessionTickets       off
+
+
+LDAPSharedCacheSize 500000
+LDAPCacheEntries 1024
+LDAPCacheTTL 600
+LDAPOpCacheEntries 1024
+LDAPOpCacheTTL 600
+
